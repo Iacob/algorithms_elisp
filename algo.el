@@ -1,12 +1,4 @@
 
-;; (defun -charCodeAt (str pos)
-;;   (if (< pos (length str))
-;;       (let ((ch1 (elt str pos)))
-;; 	(- ch1 97)
-;; 	)
-;;     -1)
-;;   )
-
 (defun -charCodeAt (str pos)
   (if (< pos (length str))
       (elt str pos)
@@ -36,37 +28,59 @@
 ;;   (print "================")
 ;;   )
 
+
+
 (defun bm_compile_pattern (pattern)
-  (let* ((R 256) (M (length pattern)) (right (make-vector R -1)))
+  (let* ((R 256) (patLen (length pattern)) (rightMap (make-vector R -1)))
     (let ((j -1))
-      (while (progn (setq j (1+ j)) (< j M))
-	(aset right (-charCodeAt pattern j) j) ) )
-    right
+      (while (progn (setq j (1+ j)) (< j patLen))
+	;;(aset rightMap (-charCodeAt pattern j) j) ) )
+	(aset rightMap (elt pattern j) j) ) )
+    rightMap
     )
   )
 
-;;(bm_compile_pattern "abcdb")
+(print (bm_compile_pattern "abcdb"))
 
 
 (defun bm_substring_search (pattern text)
   "Boyer-Moore substring search"
-  (let ((txtLen (length text)) (patLen (length pattern))
-	(right nil) (skip 0) (result nil))
+  (let ((startPos 0)
+	(skip 0)
+	(result nil)
+	(rightMap nil)
+	(result nil))
     
-    (setq right (bm_compile_pattern pattern))
-    (let ((startPos nil) (patPos nil))
-      (while (progn (setq startPos (if (not startPos) 0 (+ startPos skip)) )
-       		    (and (not result) (<= startPos (- txtLen patLen))) )
-	(setq skip 0)
-	(let ((endMatchingLoop nil))
-	  (while (progn (setq patPos (if (not patPos) (1- patLen) (1- patPos) ))
-			(and (not endMatchingLoop) (>= patPos 0)))
-	    (when (/= (-charCodeAt pattern patPos)
-		      (-charCodeAt text (+ startPos patPos)))
-	      (setq skip (- patPos (aref right (-charCodeAt text (+ startPos patPos)))))
-	      (when (< skip 1) (setq skip 1))
-	      (setq endMatchingLoop 1) ) ) )
-	(when (= 0 skip) (setq result startPos)) ) )
-    (if result result txtLen) ) )
+    (setq rightMap (bm_compile_pattern pattern))
 
-;;(bm_substring_search "aabb" "zzaabbe")
+    ;; 未得出结果且未超出字符串长度时继续
+    (while (and (not result) (<= (+ startPos skip (length pattern)) (length text)))
+      (setq startPos (+ startPos skip))
+      ;;(message "startPos:%s skip:%s" startPos skip)
+
+      (let ((idx (length pattern)) (skip1 nil))
+	;; 本次匹配未得出结果时递减
+	(while (and (not skip1) (>= (setq idx (1- idx)) 0))
+	  ;; 如idx所指位置字符不同则跳过若干字符重新匹配
+	  (when (/= (elt pattern idx) (elt text (+ startPos idx)))
+	    ;; 查找字符在pattern内的最右位置
+	    (let ((right (aref rightMap (elt text (+ startPos idx)))))
+	      (if (>= right 0)
+		  (progn (setq skip1 (- idx right))
+			 (when (<= skip1 0) (setq skip1 1)))
+		;; 如果找不到当前字符在pattern内的最右位置，说明字符在pattern内不存在
+		;; 则需要将pattern的匹配位置移到此字符之前，略过此字符再匹配
+		(progn (setq skip1 (1+ idx)))
+		)
+	      )
+	    )
+	  )
+	(if (or (not skip1) (<= skip1 0))
+	    (progn (setq result startPos))
+	  (progn (setq skip skip1)) )
+	)
+      )
+    result
+    )
+  )
+(bm_substring_search "bbbe" "abbcaazazbbbe")
