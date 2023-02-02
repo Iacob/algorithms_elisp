@@ -1,0 +1,10 @@
+
+(let ()
+  (defun matrix-transpose (m)
+    (seq-mapn #'list (nth 0 m) (nth 1 m))
+    (apply #'seq-mapn (append (list #'list) m)) )
+  (let ((m '(( 2  0 -5 -1)
+	     (-3 -2 -4  7)
+	     (-1 -3  0 -6))))
+    (message "%s" (matrix-transpose m)) )
+  )
